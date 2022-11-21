@@ -1,0 +1,15 @@
+*.com
+*.exe
+*.dll
+
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+*.opendb
+packages/
+Release/
+Debug/
+.vs/
+*.config
