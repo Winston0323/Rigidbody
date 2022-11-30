@@ -460,7 +460,7 @@ void Cloth::collision(int index, GLfloat timeStep, std::vector<Plain*> addtional
 	#pragma omp for
 	for (int i = 0; i < temp.size(); i++) {
 		Plain* p = temp[i];
-		if (p->checkHit(this->positions[index],nextPos,this->velocitys[index], this->radius).first) {
+		if (p->checkHit(this->positions[index],nextPos,this->velocitys[index], this->radius,i).first) {
 			hitPlains.push_back(p);
 		}
 	}

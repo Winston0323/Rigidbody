@@ -3,10 +3,11 @@
 
 RigidBody::RigidBody(std::string objFilename, GLfloat pointSize)
 {
-	restoreDefault();//setup constance
+	
 	objParser(objFilename);//setup render data
+	restoreDefault();//setup constance
 	moveToWorldCenter();//correct render data
-
+	
 	// Set the model matrix to an identity matrix. 
 	this->gravForce = glm::vec3(0, -this->totalMass * this->grav * this->gravMult, 0);
 	this->forces = defaultVertexForce();
@@ -63,6 +64,7 @@ void RigidBody::draw(const glm::mat4& viewProjMtx, GLuint shader)
 	glUniformMatrix4fv(glGetUniformLocation(shader, "viewProj"), 1, false, (float*)&viewProjMtx);
 	glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, (float*)&model);
 	glUniform3fv(glGetUniformLocation(shader, "DiffuseColor"), 1, &color[0]);
+	glUniform4fv(glGetUniformLocation(shader, "astColor"), 1, glm::value_ptr(this->color));
 
 	// Bind the VAO
 	glBindVertexArray(VAO);
@@ -150,13 +152,54 @@ std::vector<glm::vec3> RigidBody::intEular(GLfloat timeStep) {
 	glm::vec3 nextPMon = this->PMom + this->frcOnMassCtr * timeStep;
 	//calculate x(n+1)
 	glm::vec3 nextPos = this->massCenter + this->velocity * timeStep;
-	glm::vec3 nextVel = nextPMon / this->totalMass;
-	
+	glm::vec3 nextVel = this->PMom / this->totalMass;
+	this->frcOnMassCtr = defaultForce();
 	std::vector<glm::vec3> result;
 	result.push_back(nextPos);
 	result.push_back(nextVel);
 	result.push_back(nextPMon);
 	result.push_back(acc);
+	return result;
+}
+////////////////////////////////////////////////////////////////////////////////
+std::vector<glm::vec3> RigidBody::intRK( GLfloat timeStep) {
+	//get and check next state
+	//glm::vec3 K1Acc = this->frcOnMassCtr / this->totalMass;//get and check next state
+	
+	//calculate x(n+1)
+	glm::vec3 K1PMon = this->PMom + this->frcOnMassCtr * timeStep;
+	glm::vec3 K1Pos = this->massCenter + this->velocity * timeStep;
+	glm::vec3 K1Vec = K1PMon / this->totalMass;
+
+	//loop through all springs that the index is connected
+	glm::vec3 K2force = defaultForce();
+	glm::vec3 K2PMon = this->PMom + K2force * timeStep;
+	glm::vec3 K2Pos = this->massCenter + K1Vec * timeStep;
+	glm::vec3 K2Vec = K2PMon/ this->totalMass;
+
+	//loop through all springs that the index is connected
+	glm::vec3 K3force = defaultForce();
+	glm::vec3 K3PMon = this->PMom + K3force * 0.5f * timeStep;
+	glm::vec3 K3Pos = this->massCenter + K2Vec * 0.5f * timeStep;
+	glm::vec3 K3Vec = K3PMon / this->totalMass;
+
+	//loop through all springs that the index is connected
+	//loop through all springs that the index is connected
+	glm::vec3 K4force = defaultForce();
+	glm::vec3 K4PMon = this->PMom + K4force * timeStep;
+	glm::vec3 K4Pos = this->massCenter + K3Vec * timeStep;
+	glm::vec3 K4Vec = K4PMon / this->totalMass;
+
+	glm::vec3 nextPos = this->massCenter + timeStep * K2Vec;
+
+	glm::vec3 nextPMon = this->PMom + timeStep * K2force;
+
+	glm::vec3 nextVel = nextPMon / this->totalMass;
+
+	std::vector<glm::vec3> result;
+	result.push_back(nextPos);
+	result.push_back(nextVel);
+	result.push_back(nextPMon);
 	return result;
 }
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,22 +224,28 @@ std::vector<glm::vec3> RigidBody::defaultVertexForce()
 //		int index2 = currEdge.second;//second vertex index
 //
 //		//edge
-//		glm::vec3 Q1 = this->points[index1];
-//		glm::vec3 Q2 = this->points[index2];
+//		glm::vec3 Q1 = this->points[index1] + this->rotMat * this->localPos[index1];
+//		glm::vec3 Q2 = this->points[index2] + this->rotMat * this->localPos[index2];
 //		glm::vec3 b = Q2 - Q1;
 //
 //		//updated egde
 //		std::vector<glm::vec3> result1 = intEular(timeStep);
-//
-//		glm::vec3 Q1New = result1[0];
+//		//calcuate quaternion
+//		glm::quat rotQuad = glm::quat_cast(this->rotMat);//R
+//		glm::quat angVelQuat = glm::quat(0, this->angVel.x, this->angVel.y, this->angVel.z);//w
+//		glm::quat nextRotQuat = rotQuad + timeStep * 1.0f / 2.0f * angVelQuat * rotQuad;//R + h *1/2*w
+//		glm::mat3 nextRot = glm::mat3_cast(glm::normalize(nextRotQuat));
+//		
+//		glm::vec3 Q1New = result1[0] + nextRot * this->localPos[index1];
 //		glm::vec3 Q1VelNew = result1[1];
-//		std::vector<glm::vec3> result2 = intRK(index2, timeStep);
-//		glm::vec3 Q2New = result2[0];
+//
+//		std::vector<glm::vec3> result2 = result1;
+//		glm::vec3 Q2New = result2[0] + nextRot * this->localPos[index1];
 //		glm::vec3 Q2VelNew = result2[1];
 //		glm::vec3 bNew = Q2New - Q1New;
 //
 //		//get obsticle edges
-//		for (std::pair<glm::vec3, glm::vec3> edgepair : ball->getEgde()) {
+//		for (std::pair<glm::vec3, glm::vec3> edgepair : this->obtedges) {
 //			//obsticle edges
 //			glm::vec3 P1 = edgepair.first;
 //			glm::vec3 P2 = edgepair.second;
@@ -255,9 +304,12 @@ std::vector<glm::vec3> RigidBody::defaultVertexForce()
 //}
 ////////////////////////////////////////////////////////////////////////////////
 void RigidBody::collision(GLfloat timeStep) {
-
+	//clear the forces
+	
+	this->forces.clear();
 	//get and check next state
-	std::vector<glm::vec3> result = intEular(timeStep);
+	
+	std::vector<glm::vec3> result = intRK(timeStep);
 
 	glm::vec3 nextPos = result[0];
 	glm::vec3 nextVel = result[1];
@@ -270,18 +322,16 @@ void RigidBody::collision(GLfloat timeStep) {
 		glm::vec3 currTrq = glm::cross(r, forces[i]);
 		torque = torque + currTrq;
 	}
-	
+	//update angualar momentum and velocity
 	glm::vec3 nextLMom = this->LMom + timeStep * torque;//update angular momentmum
-	glm::vec3 nextAngVel = this->iInverse * nextLMom;//use angular momentum calculate angular velocity
+	glm::vec3 nextAngVel = this->iInverse * this->LMom;//use angular momentum calculate angular velocity
 
 	//calcuate quaternion
 	glm::quat rotQuad = glm::quat_cast(this->rotMat);//R
 	glm::quat angVelQuat = glm::quat(0, this->angVel.x, this->angVel.y, this->angVel.z);//w
 	glm::quat nextRotQuat = rotQuad + timeStep * 1.0f / 2.0f * angVelQuat * rotQuad;//R + h *1/2*w
 	glm::mat3 nextRot = glm::mat3_cast(glm::normalize(nextRotQuat));
-	//nextRot[0] = glm::normalize(nextRot[0]); //normalize the matrix
-	//nextRot[1] = glm::normalize(nextRot[1]);
-	//nextRot[2] = glm::normalize(nextRot[2]);
+	glm::mat3 nextIInv = nextRot * (this->iInvInit * glm::transpose(nextRot));//I inverse
 
 	////calcuate quaternion
 	//glm::quat angVelQuat = glm::quat(0, this->angVel.x, this->angVel.y, this->angVel.z);//w
@@ -293,39 +343,48 @@ void RigidBody::collision(GLfloat timeStep) {
 	std::vector<glm::vec3> nextPoses = localToWorld(nextPos, this->rotMat); //p1 = p0 + rpi
 
 	//detection
-	
-
 	Plain* hitPlain;
 	GLfloat f = 1.0f/DEFAULT_SIMRATE;//give f a biggest value
 
 	bool everHit = false;
 	
-	#pragma omp parallel
-	#pragma omp for
 	for (int i = 0; i < points.size(); i++) {//loop through all points
 		bool hit = false;
 		int hitplain = 0;
 		for (int j = 0; j < this->colliders.size(); j++) {//loop through all plains
 			Plain* p = this->colliders[j];
-			if (p->checkHit(this->points[i], nextPoses[i], this->velocity, 1).first) {
-				if (p->checkHit(this->points[i], nextPoses[i], this->velocity, 1).second < f) 
+			if (p->checkHit(this->points[i], nextPoses[i], this->velocity, 1,i).first) {
+				if (p->checkHit(this->points[i], nextPoses[i], this->velocity, 1, i).second < f)
 				{
 					hitPlain = p;
+					hitPlain->setLastHit(i);
 					hit = true;
 					everHit = true;
-					f = p->checkHit(this->points[i], nextPoses[i], this->velocity, 1).second;
+					f = p->checkHit(this->points[i], nextPoses[i], this->velocity, 1, i).second;
 					nextPMom = this->PMom;
 					nextLMom = this->LMom;
+					nextIInv = this->iInverse;
 					nextAngVel = this->angVel;
 					nextPos = this->massCenter;
 					nextPoses = this->points;
+					nextRot = this->rotMat;
 					hitplain = j;
+
 				}
-			}		
+				else {
+					p->setLastHit(-1);
+				
+				}
+				
+			}
+			else {
+				p->setLastHit(-1);
+			}
 		}
 		glm::vec3 ra = this->points[i] - this->massCenter;
 		if (hit) {//at least one hit
 			printf("Point%d %f, %f, %f hit plain %d \n", i,points[i].x, points[i].y, points[i].z, hitplain);
+			
 			glm::vec3 p = hitPlain->getOrigin();
 			glm::vec3 nhat = hitPlain->getNorm();
 
@@ -338,40 +397,52 @@ void RigidBody::collision(GLfloat timeStep) {
 			
 			glm::vec3 paderv = this->velocity + glm::cross(this->angVel, ra);
 			GLfloat vOld = glm::dot(paderv, nhat);//v-
+			std::cout << "V- is "<< vOld<< endl;
 			
 			//calculate j
 			GLfloat dividend = -1 * (1 + this->elastic) * vOld;//−(1 + cr)v−
-			glm::vec3 insideCrossLeft =  glm::cross(ra, nhat);//Iinv(ra × nhat)
+			
+			glm::vec3 insideCrossLeft = glm::cross(ra, nhat);//Iinv(ra × nhat)
 			glm::vec3 crossProduct = this->iInverse * glm::cross(insideCrossLeft, ra);		//Iinv(ra × nhat) × ra
-			GLfloat divisor = 1 /this->totalMass + dot(nhat, crossProduct);
+			GLfloat divisor = (1.0f / this->totalMass) + dot(nhat, crossProduct);
 			GLfloat j = dividend / divisor;
 			
-			glm::vec3 deltaP =  j * nhat;
+			glm::vec3 deltaP = j * nhat;
 			glm::vec3 deltaL = j * glm::cross(ra, nhat);
 			//overwrite the velocities and momentums into after collision 
-			nextPMom = deltaP;
-			nextLMom = deltaL;
-			//nextVel = nextVel + nextPMom / this->totalMass;
-			//nextAngVel = nextAngVel + this->iInverse * deltaL;
+			nextPMom = nextPMom + deltaP;
+			nextLMom = nextLMom + deltaL;
+			nextVel = nextVel + nextPMom / this->totalMass;
+			nextAngVel = nextAngVel + this->iInverse * deltaL;
+			glm::vec3 panew = nextVel + glm::cross(nextAngVel, ra);
+			GLfloat vnew = glm::dot(panew, nhat);
+			//if (glm::abs(vnew) > glm::abs(vOld)) {
+			//	nextPMom = nextPMom - deltaP;
+			//	nextLMom = nextLMom - deltaL;
+			//
+			//}
+			std::cout << "V+ is " << vnew << endl;
+			//std::cout << "V+ is " << vnew.x << " " << vnew.y << " " << vnew.z << endl;
+			//this->massCenter = this->massCenter + EPSILON * nhat;
 			//break;
 		}
 
 	}
 	//update the state vector
 	//linear
-	this->massCenter = nextPos;
-	this->points = nextPoses;
-	this->velocity = nextVel;
-	this->LMom = nextLMom;
-	this->iInverse = this->rotMat * this->iInvInit * glm::transpose(this->rotMat);//I inverse
-	//angular
-	this->rotMat = nextRot; //R
-	this->PMom = nextPMom;  //P
-	this->angVel = nextAngVel;//w
+	this->massCenter = nextPos;		//c.o.m.
+	this->points = nextPoses;		//pi
+	this->velocity = nextVel;		//v
+	this->PMom = nextPMom;			//P
 	
-	//clear the forces
-	this->frcOnMassCtr = defaultForce();
-	this->forces.clear();
+	//angular
+	this->rotMat = nextRot;			//R
+	this->angVel = nextAngVel;		//w
+	this->iInverse = nextIInv;		//I-1
+	this->LMom = nextLMom;			//L
+	
+	
+
 
 }
 
@@ -432,12 +503,12 @@ void RigidBody::objParser(string objFilename)
 				face.y = yCord;
 				face.z = zCord;
 				faces.push_back(face);
-				std::pair<int,int> edge1 = std::make_pair(face.x, face.y);
-				std::pair<int,int> edge2 = std::make_pair(face.x, face.z);
-				std::pair<int,int> edge3 = std::make_pair(face.y, face.z);
-				edges.push_back(edge1);
-				edges.push_back(edge2);
-				edges.push_back(edge3);
+				//std::pair<int,int> edge1 = std::make_pair(face.x, face.y);
+				//std::pair<int,int> edge2 = std::make_pair(face.x, face.z);
+				//std::pair<int,int> edge3 = std::make_pair(face.y, face.z);
+				//edges.push_back(edge1);
+				//edges.push_back(edge2);
+				//edges.push_back(edge3);
 			}
 		}
 
@@ -490,6 +561,14 @@ void RigidBody::moveToWorldCenter() {
 	}
 
 	this->massCenter = weightedPos / volumn;
+	this->massCenterRef = this->massCenter;
+
+	for (int i = 0; i < points.size(); i++) {
+
+		points[i].x = points[i].x - this->massCenter.x;
+		points[i].y = points[i].y - this->massCenter.y;
+		points[i].z = points[i].z - this->massCenter.z;
+	}
 	this->totalMass = this->pointMass * this->points.size();
 	this->geoCenter = glm::vec3(0, 0, 0);
 	std::vector<GLfloat> xCord1;
@@ -512,8 +591,9 @@ void RigidBody::moveToWorldCenter() {
 	//get the local coodinate from mass center
 	for (int i = 0; i < points.size(); i++) {
 
-		glm::vec3 localCord = glm::vec3(points[i].x - this->massCenter.x,
-			points[i].y - this->massCenter.y, points[i].z - this->massCenter.z);
+		//glm::vec3 localCord = glm::vec3(points[i].x - this->massCenter.x,
+		//	points[i].y - this->massCenter.y, points[i].z - this->massCenter.z);
+		glm::vec3 localCord = points[i];
 		this->localPos.push_back(localCord);
 		
 		//first column
@@ -532,7 +612,7 @@ void RigidBody::moveToWorldCenter() {
 		inertia[2].z = inertia[2].z + (localCord.x * localCord.x + localCord.y * localCord.y) * this->pointMass;	// (x2 + y2)mi
 		
 	}
-	
+	this->massCenter = glm::vec3(0);
 	this->inertia = inertia;
 	this->inertiaInit = inertia;
 	this->iInverse = glm::inverse(inertia);
@@ -547,24 +627,6 @@ std::vector<glm::vec3> RigidBody::localToWorld(glm::vec3 massCenter, glm::mat3 r
 	}
 
 	return worldPos;
-}
-
-void RigidBody::restoreDefault() {
-	this->color = glm::vec3(0.3, 0.3, 0.4);
-	this->pointMass = 0.1f;
-	this->model = glm::mat4(1);
-	this->rotMat = glm::mat3(1);
-	//this->rotMat[0] = glm::vec3(0,-1,0);
-	//this->rotMat[1] = glm::vec3(1,0,0);
-	//this->rotMat[2] = glm::vec3(0,0,1);
-	this->angVel = glm::vec3(0,0,0);
-	this->LMom = glm::vec3(0,0,0);
-	this->PMom = glm::vec3(0);
-	this->elastic = 0.3f;
-	this->grav = 9.8f;
-	this->gravMult = 0.0f;
-	this->frcOnMassCtr = glm::vec3(0);
-	this->velocity = glm::vec3(0);
 }
 void RigidBody::updateThreeDegree() {
 	std::vector<GLfloat> xCord1;
@@ -582,4 +644,23 @@ void RigidBody::updateThreeDegree() {
 	this->yMin = *std::min_element(yCord1.begin(), yCord1.end());
 	this->zMax = *std::max_element(zCord1.begin(), zCord1.end());
 	this->zMin = *std::min_element(zCord1.begin(), zCord1.end());
+}
+void RigidBody::restoreDefault() {
+	this->color = glm::vec3(0.3, 0.3, 0.4);
+	this->pointMass = 0.1f;
+	this->model = glm::mat4(1);
+	this->rotMat = glm::mat3(1);
+	//this->rotMat[0] = glm::vec3(0,-1,0);
+	//this->rotMat[1] = glm::vec3(1,0,0);
+	//this->rotMat[2] = glm::vec3(0,0,1);
+	this->iInverse = this->iInvInit;
+	this->massCenter = massCenterRef;
+	this->angVel = glm::vec3(0,0,0);
+	this->LMom = glm::vec3(0,0,0);
+	this->PMom = glm::vec3(0);
+	this->elastic = 0.1f;
+	this->grav = 9.8f;
+	this->gravMult = 0.0f;
+	this->frcOnMassCtr = glm::vec3(0);
+	this->velocity = glm::vec3(0);
 }

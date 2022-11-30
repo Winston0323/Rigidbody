@@ -23,10 +23,10 @@ private:
 	std::vector<glm::vec3> refPos;
 	std::vector<glm::vec3> normals;
 	std::vector<unsigned int> indices;
-	std::vector<std::pair<int, int>> edges;
+	std::vector<std::pair<glm::vec3, glm::vec3>> edges;
 	std::vector<Plain*> colliders;
 	bool isBox = false;
-
+	int lastHit = -1;
 public:
 	Plain(GLfloat size, glm::vec3 origin, glm::vec3 color);
 	Plain(GLfloat size, glm::vec3 origin, glm::vec3 normal, glm::vec3 color);
@@ -42,14 +42,16 @@ public:
 	glm::vec3 getColor() { return color; }
 	//bool checkHit(glm::vec3 pos, glm::vec3 nextPos, glm::vec3 vel, GLfloat radius);
 	bool checkHit(glm::vec3 pos, glm::vec3 nextPos, GLfloat radius);
-	std::pair<bool,GLfloat> checkHit(glm::vec3 pos, glm::vec3 nextPos, glm::vec3 vel, GLfloat radius);
+	std::pair<bool,GLfloat> checkHit(glm::vec3 pos, glm::vec3 nextPos, glm::vec3 vel, GLfloat radius,int hitIndex);
 	glm::vec3 getOrigin() { return this->origin; }
 	glm::vec3 getNorm() { return this->norm; }
 	GLfloat getRadius() { return radius; }
 	bool getIsSphere() { return isSphere; }
 	bool getBox() { return false; }
+	std::vector<std::pair<glm::vec3, glm::vec3>> getEdges() { return this->edges; }
 	std::vector<Plain*> genCollider();
 	void translation(glm::vec3 destination);
+	void setLastHit(int hitIndex) { this->lastHit = hitIndex; }
 
 };
 

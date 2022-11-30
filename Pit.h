@@ -17,6 +17,7 @@ private:
 	Plain* rightVert;
 	std::vector<Plain*> plains;
 	std::vector<Plain*> colliders;
+	std::vector<std::pair<glm::vec3, glm::vec3>> edges;
 
 
 public:
@@ -30,6 +31,7 @@ public:
 	Plain* getRightVert() { return rightVert; }
 	std::vector<Plain*> getPlains() { return this->plains; }
 	std::vector<Plain*> getCollider() { return this->colliders; }
+	std::vector<std::pair<glm::vec3, glm::vec3>> getEdges() { return this->edges; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

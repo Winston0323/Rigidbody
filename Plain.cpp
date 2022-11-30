@@ -33,13 +33,6 @@ Plain::Plain(GLfloat size, glm::vec3 origin, glm::vec3 color)
 	indices = {
 		0,2,1,		1,2,3, // Front
 	};
-
-	//update edges
-	edges.push_back(std::make_pair(0,2));
-	edges.push_back(std::make_pair(1,2));
-	edges.push_back(std::make_pair(0,1));
-	edges.push_back(std::make_pair(2,3));
-	edges.push_back(std::make_pair(1,3));
 	
 	// Generate a vertex array (VAO) and two vertex buffer objects (VBO).
 	glGenVertexArrays(1, &VAO);
@@ -204,11 +197,11 @@ Plain::Plain(GLfloat size, glm::vec3 origin, glm::vec3 normal, glm::vec3 color)
 	};
 
 	//update edges
-	edges.push_back(std::make_pair(0, 2));
-	edges.push_back(std::make_pair(1, 2));
-	edges.push_back(std::make_pair(0, 1));
-	edges.push_back(std::make_pair(2, 3));
-	edges.push_back(std::make_pair(1, 3));
+	edges.push_back(std::make_pair(positions[0], positions[2]));
+	edges.push_back(std::make_pair(positions[1], positions[2]));
+	edges.push_back(std::make_pair(positions[0], positions[1]));
+	edges.push_back(std::make_pair(positions[2], positions[3]));
+	edges.push_back(std::make_pair(positions[1], positions[3]));
 	this->colliders = genCollider();
 	//colliders.push_back(new Plain(	this->positions[this->indices[0]],
 	//								this->positions[this->indices[1]],
@@ -398,16 +391,15 @@ bool Plain::checkHit(glm::vec3 pos, glm::vec3 nextPos, GLfloat rad)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::pair<bool, GLfloat> Plain::checkHit(glm::vec3 pos, glm::vec3 nextPos, glm::vec3 vel, GLfloat radius)
+std::pair<bool, GLfloat> Plain::checkHit(glm::vec3 pos, glm::vec3 nextPos, glm::vec3 vel, GLfloat radius, int hitIndex)
 {
-	//pos = pos - this->norm * radius;
-	//GLfloat thit = glm::dot((this->origin - pos), this->norm) / glm::dot(vel, this->norm);
-	if (glm::dot((pos - this->origin), this->norm) < 0) {
-		return std::make_pair(false, -1.0f);;
-	
+
+	if (lastHit != -1 && lastHit == hitIndex) {//when last hit is not empty and lastHit was the same as this hit
+		return std::make_pair(false, -1.0f);
 	}
-
-
+	if (glm::dot((pos - this->origin), this->norm) < 0) {
+		return std::make_pair(false, -1.0f);
+	}
 	GLfloat Zn = glm::dot((pos - this->origin), this->norm);
 	GLfloat Znone = glm::dot((nextPos - this->origin), this->norm);
 	if (Zn * Znone > 0) {
@@ -415,7 +407,7 @@ std::pair<bool, GLfloat> Plain::checkHit(glm::vec3 pos, glm::vec3 nextPos, glm::
 	}
 
 	GLfloat thit = (Zn / (Zn - Znone)) * (1 / DEFAULT_SIMRATE);
-	if (thit < (1 / DEFAULT_SIMRATE - EPSILON) && thit >= EPSILON) {
+	if (thit < (1 / DEFAULT_SIMRATE + EPSILON) && thit >= EPSILON) {
 
 		glm::vec3 xhit = pos + thit * vel;
 		glm::vec2 xhitTD;

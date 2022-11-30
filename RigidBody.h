@@ -23,6 +23,7 @@ private:
 	std::vector<glm::vec3> normals;
 	std::vector<glm::ivec3> faces;
 	std::vector<std::pair<int,int>> edges;
+	std::vector<std::pair<glm::vec3,glm::vec3>> obtedges;
 
 	//renders	
 	GLuint VAO, VBOvertex, VBOnormal, EBO;
@@ -30,6 +31,7 @@ private:
 	//centers
 	glm::vec3 geoCenter;
 	glm::vec3 massCenter;
+	glm::vec3 massCenterRef;
 	
 	//varibles for intergration 
 	GLfloat pointMass;
@@ -98,6 +100,7 @@ public:
 
 	//intergration
 	std::vector<glm::vec3> intEular(GLfloat timeStep);
+	std::vector<glm::vec3> intRK(GLfloat timeStep);
 	std::vector<glm::vec3> localToWorld(glm::vec3 massCenter, glm::mat3 rotMat);
 	void collision(GLfloat timeStep);
 	void edgeCollision(GLfloat timeStep);
@@ -113,9 +116,11 @@ public:
 	GLfloat* getMassCenterY() { return &this->massCenter.y; }
 	GLfloat* getMassCenterZ() { return &this->massCenter.z; }
 	GLfloat* getGravMult() { return &this->gravMult; }
+	GLfloat* getElastic() { return &this->elastic; }
 	
 	//setters
 	void setCollider(std::vector<Plain*> val) { this->colliders = val; }
+	void setObsEdge(std::vector<std::pair<glm::vec3,glm::vec3>> val) { this->obtedges = val; }
 	
 	//set up helpers
 	void restoreDefault();

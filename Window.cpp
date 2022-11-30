@@ -39,6 +39,7 @@ GLuint Window::shaderProgram;
 GLuint Window::pointShaderProgram;
 GLuint Window::toonShaderProgram;
 GLuint Window::phongShaderProgram;
+//string objFileName = "obj/amongus_astro_still.obj";
 string objFileName = "obj/cone.obj";
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -92,6 +93,7 @@ bool Window::initializeObjects()
 	test = new RigidBody(objFileName, 1);
 	pit = new Pit(10, glm::vec3(0.3,-10,0), 5.3);
 	test->setCollider(pit->getCollider());
+	test->setObsEdge(pit->getEdges());
 	return true;
 }
 
@@ -247,7 +249,6 @@ void Window::resetCamera()
 	Cam->Reset();
 	Cam->SetAspect(float(Window::width) / float(Window::height));
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 
 // callbacks - for Interaction 
@@ -367,6 +368,10 @@ void Window::drawGUI() {
 	ImGui::SliderFloat("massCenter Y", test->getMassCenterY(), -10, 10);
 	ImGui::SliderFloat("massCenter Z", test->getMassCenterZ(), -10, 10);
 	ImGui::SliderFloat("Grav Mult", test->getGravMult(), -5, 5);
+	ImGui::SliderFloat("Elastic", test->getElastic(), 0, 1);
+	if (ImGui::Button("restore default")) {
+		test->restoreDefault();
+	}
 	ImGui::Text("Cam Pos: %f, %f, %f", Cam->GetPos().x, Cam->GetPos().y, Cam->GetPos().z);
 	ImGui::End();
 	//draw imgui

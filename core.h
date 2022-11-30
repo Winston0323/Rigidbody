@@ -24,7 +24,7 @@
 #include <iostream>
 
 //Miscs
-#define EPSILON 1e-4
+#define EPSILON 1e-5f
 #define TOLERANCE 0.01f
 
 //Object properties
